@@ -1,0 +1,59 @@
+
+// DISTORT
+// setBlendMode alpha
+
+// shaders.distort:send('time', time)
+//         shaders.distort:send('horizontal_fuzz', 0.2*(distortion/10))
+//         shaders.distort:send('rgb_offset', 0.2*(distortion/10))
+
+// GLITCH
+// love.graphics.setBlendMode("alpha", "premultiplied")
+//love.graphics.setShader(shaders.glitch)
+// shaders.glitch:send('glitch_map', self.glitch_canvas)
+
+function GlitchDisplacementC:new(x, y, w, h, color)
+    self.timer = Timer()
+    self.x, self.y = x, y
+    self.w, self.h = w, h
+    self.color = color
+    self.dead = false
+    self.timer:after(random(0.05, 0.4), function() self.dead = true end)
+end
+
+function GlitchDisplacementC:update(dt)
+    self.timer:update(dt)
+end
+
+function GlitchDisplacementC:draw()
+    love.graphics.setColor(self.color)
+    love.graphics.rectangle('fill', self.x - self.w/2, self.y - self.h/2, self.w, self.h)
+    love.graphics.setColor(255, 255, 255, 255)
+end
+
+// function Classes:glitch(x, y)
+//     for i = 1, 6 do
+//         self.timer:after(0.1*i, function()
+//             self.area:addGameObject('GlitchDisplacement', x + random(-32, 32), y + random(-32, 32)) 
+//         end)
+//     end
+// end
+
+// function Classes:glitchError()
+//     for i = 1, 10 do self.timer:after(0.1*i, function() self.area:addGameObject('GlitchDisplacement') end) end
+//     self.rgb_shift_mag = random(4, 8)
+//     self.timer:tween('rgb_shift', 1, self, {rgb_shift_mag = 0}, 'in-out-cubic')
+// end
+
+
+// RGB SHIFT
+// love.graphics.setBlendMode("alpha", "premultiplied")
+//void RGBShift(void) {
+    // self.rgb_shift_mag = random(2, 4)
+    // self.timer:tween('rgb_shift', 0.25, self, {rgb_shift_mag = 0}, 'in-out-cubic')
+    // shaders.rgb_shift:send('amount', {random(-self.rgb_shift_mag, self.rgb_shift_mag)/gw, random(-self.rgb_shift_mag, self.rgb_shift_mag)/gh})
+//}
+
+
+// SHADERS BLEND MODE love.graphics.setBlendMode('alpha', 'premultiplied')
+// game
+// REGULAR BLEND MODE love.graphics.setBlendMode('alpha') // clear mode
