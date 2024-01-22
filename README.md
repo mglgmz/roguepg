@@ -1,5 +1,7 @@
-# Tiny RPG
+# mglgmz Roguelike 
 
+# Dungeon Generation
+- BSP algorithm
 
 # Fonts
 - https://www.fontspace.com/motley-forces-font-f87817
