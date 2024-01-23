@@ -69,6 +69,8 @@ Vector2 playerPosition;
 static int maxPlayerActions = 1;
 static int playerRemaingActions = 1;
 
+int playerInRoom = 0;
+
 typedef enum GameState {
     MAP_STATE = 1,
     COMBAT_STATE
@@ -124,42 +126,73 @@ static void DrawDebugGrid(void) {
 /////////////////// DUNGEON ///////////////////////
 
 // V1
-int totalRooms = 0;
+
 int maxDungeonSize = 120;
 int minSplitSize = 18;
 int maxSplitIterations = 9;
 
 #define NO_PARENT -1
 #define ROOM_ALLOC 200
+#define ROOM_FACTOR 0.9f
+#define MAX_TUNNELS_PER_ROOM 4
 
-Rectangle roomContainers[ROOM_ALLOC];
-int parents[ROOM_ALLOC];
-Rectangle rooms[ROOM_ALLOC];
+typedef struct Tunnel {
+    int from;
+    int to;
+
+    int requirements;
+    int used;
+} Tunnel;
+
+typedef struct Room {
+    int id;
+    
+    Rectangle container;
+    Rectangle bounds;
+    Rectangle normalizedBounds;
+
+    Tunnel tunnels[MAX_TUNNELS_PER_ROOM];
+    int totalTunnels;
+
+} Room;
+
+Room rooms[ROOM_ALLOC];
+int totalRooms = 0;
+
+// Rectangle roomContainers[ROOM_ALLOC];
+// Rectangle rooms[ROOM_ALLOC];
 
 static int IterateGeneration(void) {
     int currentTotalRooms = totalRooms;
     int returnValue = 1;
     for(int i = 0; i < currentTotalRooms; i++) {
-        Rectangle* room = &roomContainers[i];
-        if(room->width >= 2 * minSplitSize || room->height >= 2 * minSplitSize) {
-            char direction = room->width > room->height ? 'x' : 'y';
-            if(direction == 'x' && room->width < 2 * minSplitSize) direction = 'y';
-            if(direction == 'y' && room->height < 2 * minSplitSize) direction = 'x';
+        Room* room = &rooms[i];
+
+        if(room->container.width >= 2 * minSplitSize || room->container.height >= 2 * minSplitSize) {
+            char direction = room->container.width > room->container.height ? 'x' : 'y';
+            if(direction == 'x' && room->container.width < 2 * minSplitSize) direction = 'y';
+            if(direction == 'y' && room->container.height < 2 * minSplitSize) direction = 'x';
             
             if(direction == 'x') {
-                int splitX = GetRandomValue(minSplitSize, room->width - minSplitSize);
-                float originalWidth = room->width;
-                room->width = splitX;
-                roomContainers[totalRooms] = (Rectangle){ room->x + splitX, room->y, originalWidth-splitX, room->height };
+                int splitX = GetRandomValue(minSplitSize, room->container.width - minSplitSize);
+                float originalWidth = room->container.width;
+                room->container.width = splitX;
+                Room newRoom = {
+                    .id = totalRooms
+                };
+                newRoom.container = (Rectangle){ room->container.x + splitX, room->container.y, originalWidth-splitX, room->container.height };
+                rooms[totalRooms] = newRoom;
                 totalRooms++;
-                parents[totalRooms - 1] = i;
             } else {
-                int splitY = GetRandomValue(minSplitSize, room->height - minSplitSize);
-                float originalHeight = room->height;
-                room->height = splitY;
-                roomContainers[totalRooms] = (Rectangle){ room->x, room->y + splitY, room->width, originalHeight-splitY };
+                int splitY = GetRandomValue(minSplitSize, room->container.height - minSplitSize);
+                float originalHeight = room->container.height;
+                room->container.height = splitY;
+                Room newRoom = {
+                    .id = totalRooms
+                };
+                newRoom.container = (Rectangle){ room->container.x, room->container.y + splitY, room->container.width, originalHeight-splitY };
+                rooms[totalRooms] = newRoom;
                 totalRooms++;
-                parents[totalRooms - 1] = i;
             }
            returnValue = 0;
         }
@@ -169,10 +202,14 @@ static int IterateGeneration(void) {
 
 static void GenerateDungeon(void) {
     int shouldStop = 0;
-    roomContainers[0] = (Rectangle){ -maxDungeonSize / 2, -maxDungeonSize / 2, maxDungeonSize, maxDungeonSize };
+    Rectangle initialContainer = (Rectangle){ -maxDungeonSize / 2, -maxDungeonSize / 2, maxDungeonSize, maxDungeonSize };
+    Room initialRoom = {
+        .id = 0,
+        .container = initialContainer
+    };
+    rooms[0] = initialRoom;
     totalRooms = 1;
     int iterations = 0;
-    for(int i =0; i < ROOM_ALLOC;i++) parents[i] = NO_PARENT;
 
     while(!shouldStop && iterations++ < maxSplitIterations) {
         int current = 0;
@@ -180,51 +217,39 @@ static void GenerateDungeon(void) {
     }
 
     for(int i = 0; i < totalRooms; i++) {
-        Rectangle* room = &roomContainers[i];
-        int width = GetRandomValue(room->width * 0.6f, room->width);
-        int height = GetRandomValue(room->height * 0.6f, room->height);
-        int newX = abs(room->width - width) / 2 + room->x;
-        int newY = abs(room->height - height) / 2 + room->y;
-        rooms[i] = (Rectangle) { newX, newY, width, height };
+        Room *room = &rooms[i];
+
+        int width = room->container.width * ROOM_FACTOR; //GetRandomValue(room->container.width * ROOM_FACTOR, room->container.width);
+        int height = room->container.height * ROOM_FACTOR; //GetRandomValue(room->container.height * ROOM_FACTOR, room->container.height);
+        int newX = abs(room->container.width - width) / 2 + room->container.x;
+        int newY = abs(room->container.height - height) / 2 + room->container.y;
+
+        Rectangle bounds = (Rectangle) { newX, newY, width, height };
+        Vector2 normalizedPosition = XYToCoords(newX, newY);
+        Rectangle normalizedBounds = (Rectangle) { normalizedPosition.x, normalizedPosition.y, width * TW, height * TW };
+
+        room->bounds = bounds;
+        room->normalizedBounds = normalizedBounds;
     }
+
+
 }
 
-#ifdef DEBUGGER
-bool showRoomsInfo = false;
-static void ShowRoomsInfo(void) {
-    if(!showRoomsInfo) return;
-    int currentY = 5; 
-    int fontSize = 12;
-    for(int i = 0; i < totalRooms; i++, currentY += fontSize * 1.5f) {
-        Rectangle* room = &roomContainers[i];
-        Vector2 position = XYToCoords(room->x, room->y);
-        const char* roomInfo = TextFormat("i: %i, X: %f, Y: %f, pX: %f, pY: %f, w: %f, h:%f", i, room->x, room->y, position.x, position.y, room->width, room->height);
-        DrawText(roomInfo, 5, currentY, fontSize, DARKBLUE);
-    }
+
+static void GenerateTunnels(void) {
+    // every adjacent room will be connected UP to a limit
+
 }
-#endif
 
 static void DrawDungeon(void) {
     for(int i = 0; i < totalRooms; i++) {
-        Rectangle* roomContainer = &roomContainers[i];
-        Vector2 position = XYToCoords(roomContainer->x, roomContainer->y);
-
-        DrawRectangleLinesEx((Rectangle){ position.x, position.y, roomContainer->width * TW, roomContainer->height * TW}, 5.0f, RED);
-        #ifdef DEBUGGER
-            if(showRoomsInfo) {
-                const char* roomInfo = TextFormat("i: %i", i);
-                DrawText(roomInfo, position.x + 5, position.y + 5, 24, RED);
-            }
-        #endif
-
-        Rectangle* room = &rooms[i];
-        Vector2 rPosition = XYToCoords(room->x, room->y);
-        DrawRectangleRec((Rectangle){ rPosition.x, rPosition.y, room->width * TW, room->height * TW}, BEIGE);
+        Room* room = &rooms[i];
+        Vector2 position = XYToCoords(room->container.x, room->container.y);
+        DrawRectangleLinesEx((Rectangle){ position.x, position.y, room->container.width * TW, room->container.height * TW}, 5.0f, COLOR_4);
+        DrawRectangleRec(room->normalizedBounds, COLOR_2);
+        DrawText(TextFormat("%i", i), room->normalizedBounds.x + 5, room->normalizedBounds.y + 5, 96, COLOR_4);
     }
-
-    
 }
-
 
 
 ///////////////////////////////////////////////////
@@ -250,8 +275,6 @@ static void UpdateMap(void) {
         GenerateDungeon();
     }
 
-    if(IsKeyPressed(KEY_F12))
-        showRoomsInfo = !showRoomsInfo;
 #endif
 
     // Input
@@ -302,21 +325,18 @@ static void UpdateCombat(void) {
 static void RenderMap(void) {
     // Draw
     BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(CLEAR_COLOR);
 
         BeginMode2D(*GetGameCamera());
             DrawDungeon();
-            DrawDebugGrid();
-            DrawRectangle(playerPosition.x + TW / 4, playerPosition.y + TW / 4, playerDest.width, playerDest.height, BROWN);
+            // DrawDebugGrid();
+            DrawRectangle(playerPosition.x + TW / 4, playerPosition.y + TW / 4, playerDest.width, playerDest.height, COLOR_3);
             
         EndMode2D();
 
-        DrawText(TextFormat("CurrentTurn: %s", currentTurn == PLAYER_TURN ? "Player" : "Dungeon"), 5, gameHeight - 15, 10, RED);
-        DrawText(TextFormat("TotalRooms: %i", totalRooms), 5, gameHeight - 30, 10, RED);
+        DrawText(TextFormat("CurrentTurn: %s", currentTurn == PLAYER_TURN ? "Player" : "Dungeon"), 5, gameHeight - 15, 10, COLOR_3);
+        DrawText(TextFormat("TotalRooms: %i", totalRooms), 5, gameHeight - 30, 10, COLOR_3);
 
-#ifdef DEBUGGER
-        ShowRoomsInfo();
-#endif
     EndDrawing();
 }
 
