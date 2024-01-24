@@ -8,7 +8,7 @@
 
 
 
-#define CLEAR_COLOR COLOR_1
+#define CLEAR_COLOR COLOR_3
 
 // PALETTE 1
 #define COLOR_1 (Color) { 0x8e,0xca, 0xe6, 0xff }

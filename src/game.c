@@ -59,10 +59,10 @@ int main(void) {
 // TODO: multiplayer!!!s
 
 Rectangle playerDest = {
-    .x = 0,
-    .y = 0,
-    .width = TW / 2,
-    .height = TW / 2  
+    .x = 1,
+    .y = 1,
+    .width = TW,
+    .height = TW  
 };
 Vector2 playerPosition;
 
@@ -125,131 +125,188 @@ static void DrawDebugGrid(void) {
 
 /////////////////// DUNGEON ///////////////////////
 
-// V1
+// V2
+#define DEFAULT_DUNGEON_SIZE 20
+#define DUNGEON_SCALE 5
 
-int maxDungeonSize = 120;
-int minSplitSize = 18;
-int maxSplitIterations = 9;
+Vector2 dungeonOrigin = { 0 };
+// int dungeonTiles[DEFAULT_DUNGEON_SIZE * DEFAULT_DUNGEON_SIZE];
 
-#define NO_PARENT -1
-#define ROOM_ALLOC 200
-#define ROOM_FACTOR 0.9f
-#define MAX_TUNNELS_PER_ROOM 4
+int GetDungeonAt(int* dungeonTiles, int x, int y, int dungeonSize) {
+    return dungeonTiles[y * dungeonSize + x];
+}
 
-typedef struct Tunnel {
-    int from;
-    int to;
+void SetDungeonAt(int* dungeonTiles, int x, int y, int dungeonSize, int content) {
+    dungeonTiles[y * dungeonSize + x] = content;
+}
 
-    int requirements;
-    int used;
-} Tunnel;
+void DrawDungeonV2(int* dungetonTiles, int dungeonSize, int xPos, int yPos, int tw) {
+    for(int x = 0; x < dungeonSize; x++) {
+        for (int y = 0; y < dungeonSize; y++) {
+            int tile = GetDungeonAt(dungetonTiles, x, y, dungeonSize);
 
-typedef struct Room {
-    int id;
-    
-    Rectangle container;
-    Rectangle bounds;
-    Rectangle normalizedBounds;
+            DrawRectangle(xPos + x * tw * DUNGEON_SCALE, yPos + y*tw * DUNGEON_SCALE, tw* DUNGEON_SCALE, tw* DUNGEON_SCALE, tile == 0 ? COLOR_2 : COLOR_3);
 
-    Tunnel tunnels[MAX_TUNNELS_PER_ROOM];
-    int totalTunnels;
-
-} Room;
-
-Room rooms[ROOM_ALLOC];
-int totalRooms = 0;
-
-// Rectangle roomContainers[ROOM_ALLOC];
-// Rectangle rooms[ROOM_ALLOC];
-
-static int IterateGeneration(void) {
-    int currentTotalRooms = totalRooms;
-    int returnValue = 1;
-    for(int i = 0; i < currentTotalRooms; i++) {
-        Room* room = &rooms[i];
-
-        if(room->container.width >= 2 * minSplitSize || room->container.height >= 2 * minSplitSize) {
-            char direction = room->container.width > room->container.height ? 'x' : 'y';
-            if(direction == 'x' && room->container.width < 2 * minSplitSize) direction = 'y';
-            if(direction == 'y' && room->container.height < 2 * minSplitSize) direction = 'x';
-            
-            if(direction == 'x') {
-                int splitX = GetRandomValue(minSplitSize, room->container.width - minSplitSize);
-                float originalWidth = room->container.width;
-                room->container.width = splitX;
-                Room newRoom = {
-                    .id = totalRooms
-                };
-                newRoom.container = (Rectangle){ room->container.x + splitX, room->container.y, originalWidth-splitX, room->container.height };
-                rooms[totalRooms] = newRoom;
-                totalRooms++;
-            } else {
-                int splitY = GetRandomValue(minSplitSize, room->container.height - minSplitSize);
-                float originalHeight = room->container.height;
-                room->container.height = splitY;
-                Room newRoom = {
-                    .id = totalRooms
-                };
-                newRoom.container = (Rectangle){ room->container.x, room->container.y + splitY, room->container.width, originalHeight-splitY };
-                rooms[totalRooms] = newRoom;
-                totalRooms++;
-            }
-           returnValue = 0;
         }
     }
-    return returnValue;
 }
+
+Vector2 CoordsToPos(int x, int y, int tw) {
+    return (Vector2) { dungeonOrigin.x + x * tw * DUNGEON_SCALE, dungeonOrigin.y + y * tw * DUNGEON_SCALE };
+}
+
+int dungeon1 [DEFAULT_DUNGEON_SIZE * DEFAULT_DUNGEON_SIZE] = {
+    0,0,0,0,1,1,0,0,0,0,0,0,1,0,1,0,0,0,0,1,
+    0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,
+    0,0,0,0,1,1,1,1,0,1,1,1,1,0,1,0,0,0,0,1,
+    0,0,0,0,1,1,0,0,0,0,0,0,1,0,1,0,0,0,0,1,
+    0,0,0,0,1,1,0,0,0,0,0,0,1,0,1,1,1,1,1,1,
+    0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,1,0,1,1,1,1,0,0,0,0,0,1,0,1,0,0,0,0,1,
+    0,0,0,0,1,1,1,0,0,0,0,0,1,0,1,0,0,0,0,1,
+    0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1,1,1,1,
+    0,0,0,0,1,1,1,0,0,0,0,0,1,0,1,0,0,0,0,1,
+    0,0,0,0,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,
+    0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,1,
+    1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,1,1,
+    0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,
+};
+
 
 static void GenerateDungeon(void) {
-    int shouldStop = 0;
-    Rectangle initialContainer = (Rectangle){ -maxDungeonSize / 2, -maxDungeonSize / 2, maxDungeonSize, maxDungeonSize };
-    Room initialRoom = {
-        .id = 0,
-        .container = initialContainer
-    };
-    rooms[0] = initialRoom;
-    totalRooms = 1;
-    int iterations = 0;
-
-    while(!shouldStop && iterations++ < maxSplitIterations) {
-        int current = 0;
-        shouldStop = IterateGeneration();
-    }
-
-    for(int i = 0; i < totalRooms; i++) {
-        Room *room = &rooms[i];
-
-        int width = room->container.width * ROOM_FACTOR; //GetRandomValue(room->container.width * ROOM_FACTOR, room->container.width);
-        int height = room->container.height * ROOM_FACTOR; //GetRandomValue(room->container.height * ROOM_FACTOR, room->container.height);
-        int newX = abs(room->container.width - width) / 2 + room->container.x;
-        int newY = abs(room->container.height - height) / 2 + room->container.y;
-
-        Rectangle bounds = (Rectangle) { newX, newY, width, height };
-        Vector2 normalizedPosition = XYToCoords(newX, newY);
-        Rectangle normalizedBounds = (Rectangle) { normalizedPosition.x, normalizedPosition.y, width * TW, height * TW };
-
-        room->bounds = bounds;
-        room->normalizedBounds = normalizedBounds;
-    }
-
-
+    dungeonOrigin = (Vector2) { -DEFAULT_DUNGEON_SIZE * TW * DUNGEON_SCALE / 2, - DEFAULT_DUNGEON_SIZE * TW * DUNGEON_SCALE / 2 - 2 };
 }
 
+// V1
 
-static void GenerateTunnels(void) {
-    // every adjacent room will be connected UP to a limit
+// int maxDungeonSize = 120;
+// int minSplitSize = 18;
+// int maxSplitIterations = 9;
 
-}
+// #define NO_PARENT -1
+// #define ROOM_ALLOC 200
+// #define ROOM_FACTOR 0.9f
+// #define MAX_TUNNELS_PER_ROOM 4
 
-static void DrawDungeon(void) {
-    for(int i = 0; i < totalRooms; i++) {
-        Room* room = &rooms[i];
-        Vector2 position = XYToCoords(room->container.x, room->container.y);
-        DrawRectangleLinesEx((Rectangle){ position.x, position.y, room->container.width * TW, room->container.height * TW}, 5.0f, COLOR_4);
-        DrawRectangleRec(room->normalizedBounds, COLOR_2);
-        DrawText(TextFormat("%i", i), room->normalizedBounds.x + 5, room->normalizedBounds.y + 5, 96, COLOR_4);
-    }
-}
+// typedef struct Tunnel {
+//     int from;
+//     int to;
+
+//     int requirements;
+//     int used;
+// } Tunnel;
+
+// typedef struct Room {
+//     int id;
+    
+//     Rectangle container;
+//     Rectangle bounds;
+//     Rectangle normalizedBounds;
+
+//     Tunnel tunnels[MAX_TUNNELS_PER_ROOM];
+//     int totalTunnels;
+
+// } Room;
+
+// Room rooms[ROOM_ALLOC];
+// int totalRooms = 0;
+
+// // Rectangle roomContainers[ROOM_ALLOC];
+// // Rectangle rooms[ROOM_ALLOC];
+
+// static int IterateGeneration(void) {
+//     int currentTotalRooms = totalRooms;
+//     int returnValue = 1;
+//     for(int i = 0; i < currentTotalRooms; i++) {
+//         Room* room = &rooms[i];
+
+//         if(room->container.width >= 2 * minSplitSize || room->container.height >= 2 * minSplitSize) {
+//             char direction = room->container.width > room->container.height ? 'x' : 'y';
+//             if(direction == 'x' && room->container.width < 2 * minSplitSize) direction = 'y';
+//             if(direction == 'y' && room->container.height < 2 * minSplitSize) direction = 'x';
+            
+//             if(direction == 'x') {
+//                 int splitX = GetRandomValue(minSplitSize, room->container.width - minSplitSize);
+//                 float originalWidth = room->container.width;
+//                 room->container.width = splitX;
+//                 Room newRoom = {
+//                     .id = totalRooms
+//                 };
+//                 newRoom.container = (Rectangle){ room->container.x + splitX, room->container.y, originalWidth-splitX, room->container.height };
+//                 rooms[totalRooms] = newRoom;
+//                 totalRooms++;
+//             } else {
+//                 int splitY = GetRandomValue(minSplitSize, room->container.height - minSplitSize);
+//                 float originalHeight = room->container.height;
+//                 room->container.height = splitY;
+//                 Room newRoom = {
+//                     .id = totalRooms
+//                 };
+//                 newRoom.container = (Rectangle){ room->container.x, room->container.y + splitY, room->container.width, originalHeight-splitY };
+//                 rooms[totalRooms] = newRoom;
+//                 totalRooms++;
+//             }
+//            returnValue = 0;
+//         }
+//     }
+//     return returnValue;
+// }
+
+// static void GenerateDungeon(void) {
+//     int shouldStop = 0;
+//     Rectangle initialContainer = (Rectangle){ -maxDungeonSize / 2, -maxDungeonSize / 2, maxDungeonSize, maxDungeonSize };
+//     Room initialRoom = {
+//         .id = 0,
+//         .container = initialContainer
+//     };
+//     rooms[0] = initialRoom;
+//     totalRooms = 1;
+//     int iterations = 0;
+
+//     while(!shouldStop && iterations++ < maxSplitIterations) {
+//         int current = 0;
+//         shouldStop = IterateGeneration();
+//     }
+
+//     for(int i = 0; i < totalRooms; i++) {
+//         Room *room = &rooms[i];
+
+//         int width = room->container.width * ROOM_FACTOR; //GetRandomValue(room->container.width * ROOM_FACTOR, room->container.width);
+//         int height = room->container.height * ROOM_FACTOR; //GetRandomValue(room->container.height * ROOM_FACTOR, room->container.height);
+//         int newX = abs(room->container.width - width) / 2 + room->container.x;
+//         int newY = abs(room->container.height - height) / 2 + room->container.y;
+
+//         Rectangle bounds = (Rectangle) { newX, newY, width, height };
+//         Vector2 normalizedPosition = XYToCoords(newX, newY);
+//         Rectangle normalizedBounds = (Rectangle) { normalizedPosition.x, normalizedPosition.y, width * TW, height * TW };
+
+//         room->bounds = bounds;
+//         room->normalizedBounds = normalizedBounds;
+//     }
+
+
+// }
+
+
+// static void GenerateTunnels(void) {
+//     // every adjacent room will be connected UP to a limit
+// }
+
+// static void DrawDungeon(void) {
+//     for(int i = 0; i < totalRooms; i++) {
+//         Room* room = &rooms[i];
+//         Vector2 position = XYToCoords(room->container.x, room->container.y);
+//         DrawRectangleLinesEx((Rectangle){ position.x, position.y, room->container.width * TW, room->container.height * TW}, 5.0f, COLOR_4);
+//         DrawRectangleRec(room->normalizedBounds, COLOR_2);
+//         DrawText(TextFormat("%i", i), room->normalizedBounds.x + 5, room->normalizedBounds.y + 5, 96, COLOR_4);
+//     }
+// }
 
 
 ///////////////////////////////////////////////////
@@ -269,13 +326,6 @@ static void DungeonTurn(void) {
 
 static void UpdateMap(void) {
     SetGameCameraZoom(GetGameCamera()->zoom + ((float)GetMouseWheelMove()*0.05f));
-
-#ifdef DEBUGGER
-    if(IsKeyPressed(KEY_BACKSLASH)) {
-        GenerateDungeon();
-    }
-
-#endif
 
     // Input
     if(currentTurn == DUNGEON_TURN && dungeonRemaingTime <= 0.0f) {
@@ -308,7 +358,7 @@ static void UpdateMap(void) {
         dungeonRemaingTime -= GetFrameTime();
     }
 
-    playerPosition = XYToCoords(playerDest.x, playerDest. y);
+    playerPosition = CoordsToPos(playerDest.x, playerDest.y, TW);
     UpdateGameCamera(playerPosition);
 
 }
@@ -328,14 +378,15 @@ static void RenderMap(void) {
         ClearBackground(CLEAR_COLOR);
 
         BeginMode2D(*GetGameCamera());
-            DrawDungeon();
+            //DrawDungeon();
+            DrawDungeonV2(dungeon1, DEFAULT_DUNGEON_SIZE, dungeonOrigin.x, dungeonOrigin.y, TW);
             // DrawDebugGrid();
-            DrawRectangle(playerPosition.x + TW / 4, playerPosition.y + TW / 4, playerDest.width, playerDest.height, COLOR_3);
+            DrawRectangle(playerPosition.x, playerPosition.y, playerDest.width, playerDest.height, COLOR_4);
             
         EndMode2D();
 
         DrawText(TextFormat("CurrentTurn: %s", currentTurn == PLAYER_TURN ? "Player" : "Dungeon"), 5, gameHeight - 15, 10, COLOR_3);
-        DrawText(TextFormat("TotalRooms: %i", totalRooms), 5, gameHeight - 30, 10, COLOR_3);
+        // DrawText(TextFormat("TotalRooms: %i", totalRooms), 5, gameHeight - 30, 10, COLOR_3);
 
     EndDrawing();
 }
