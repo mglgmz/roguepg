@@ -34,8 +34,12 @@ int main(void) {
     SetTargetFPS(TARGET_FPS);
     gameFont = LoadFont("resources/fonts/shiny.ttf");
 
+#if !defined(EDITOR_MODE)
     InitGameCamera();
     GenerateDungeon();
+#else 
+    InitEditor();
+#endif
 
 #if defined(PLATFORM_WEB)
     emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
@@ -126,61 +130,26 @@ static void DrawDebugGrid(void) {
 /////////////////// DUNGEON ///////////////////////
 
 // V2
-#define DEFAULT_DUNGEON_SIZE 20
-#define DUNGEON_SCALE 5
+#define DEFAULT_DUNGEON_SIZE 50
 
 Vector2 dungeonOrigin = { 0 };
-// int dungeonTiles[DEFAULT_DUNGEON_SIZE * DEFAULT_DUNGEON_SIZE];
 
-int GetDungeonAt(int* dungeonTiles, int x, int y, int dungeonSize) {
-    return dungeonTiles[y * dungeonSize + x];
-}
 
-void SetDungeonAt(int* dungeonTiles, int x, int y, int dungeonSize, int content) {
-    dungeonTiles[y * dungeonSize + x] = content;
-}
-
-void DrawDungeonV2(int* dungetonTiles, int dungeonSize, int xPos, int yPos, int tw) {
-    for(int x = 0; x < dungeonSize; x++) {
-        for (int y = 0; y < dungeonSize; y++) {
-            int tile = GetDungeonAt(dungetonTiles, x, y, dungeonSize);
-
-            DrawRectangle(xPos + x * tw * DUNGEON_SCALE, yPos + y*tw * DUNGEON_SCALE, tw* DUNGEON_SCALE, tw* DUNGEON_SCALE, tile == 0 ? COLOR_2 : COLOR_3);
-
-        }
-    }
-}
-
-Vector2 CoordsToPos(int x, int y, int tw) {
-    return (Vector2) { dungeonOrigin.x + x * tw * DUNGEON_SCALE, dungeonOrigin.y + y * tw * DUNGEON_SCALE };
-}
-
-int dungeon1 [DEFAULT_DUNGEON_SIZE * DEFAULT_DUNGEON_SIZE] = {
-    0,0,0,0,1,1,0,0,0,0,0,0,1,0,1,0,0,0,0,1,
-    0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,
-    0,0,0,0,1,1,1,1,0,1,1,1,1,0,1,0,0,0,0,1,
-    0,0,0,0,1,1,0,0,0,0,0,0,1,0,1,0,0,0,0,1,
-    0,0,0,0,1,1,0,0,0,0,0,0,1,0,1,1,1,1,1,1,
-    0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-    1,1,0,1,1,1,1,0,0,0,0,0,1,0,1,0,0,0,0,1,
-    0,0,0,0,1,1,1,0,0,0,0,0,1,0,1,0,0,0,0,1,
-    0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1,1,1,1,
-    0,0,0,0,1,1,1,0,0,0,0,0,1,0,1,0,0,0,0,1,
-    0,0,0,0,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,
-    0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,1,
-    1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,1,1,
-    0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,
-};
-
+Dungeon dungeon = { 0 };
 
 static void GenerateDungeon(void) {
-    dungeonOrigin = (Vector2) { -DEFAULT_DUNGEON_SIZE * TW * DUNGEON_SCALE / 2, - DEFAULT_DUNGEON_SIZE * TW * DUNGEON_SCALE / 2 - 2 };
+    dungeonOrigin = (Vector2) { -DEFAULT_DUNGEON_SIZE * TW / 2, -DEFAULT_DUNGEON_SIZE * TW / 2 };
+
+    Rectangle initialBounds = (Rectangle){ 0, 0, DEFAULT_DUNGEON_SIZE, DEFAULT_DUNGEON_SIZE };
+
+    
+
+}
+
+static void DrawDungeon(void) {
+    
+    
+
 }
 
 
@@ -233,8 +202,8 @@ static void UpdateMap(void) {
         dungeonRemaingTime -= GetFrameTime();
     }
 
-    playerPosition = CoordsToPos(playerDest.x, playerDest.y, TW);
-    UpdateGameCamera(playerPosition);
+    // playerPosition = CoordsToPos(playerDest.x, playerDest.y, TW);
+    // UpdateGameCamera(playerPosition);
 
 }
 
@@ -250,11 +219,11 @@ static void UpdateCombat(void) {
 static void RenderMap(void) {
     // Draw
     BeginDrawing();
-        ClearBackground(CLEAR_COLOR);
+        ClearBackground(RAYWHITE);
 
         BeginMode2D(*GetGameCamera());
-            //DrawDungeon();
-            DrawDungeonV2(dungeon1, DEFAULT_DUNGEON_SIZE, dungeonOrigin.x, dungeonOrigin.y, TW);
+            DrawDungeon();
+            
             // DrawDebugGrid();
             DrawRectangle(playerPosition.x, playerPosition.y, playerDest.width, playerDest.height, COLOR_4);
             
@@ -273,7 +242,7 @@ static void RenderCombat(void) {
 ///////////////////////////////////////////////////
 
 static void UpdateDrawFrame(void) {
-    
+#if !defined(EDITOR_MODE)
     if(currentState == MAP_STATE)  {
         UpdateMap();
         RenderMap();
@@ -282,5 +251,9 @@ static void UpdateDrawFrame(void) {
         UpdateCombat();
         RenderCombat();
     }
+#else
+    UpdateEditor();
+    RenderEditor();
+#endif
 
 }

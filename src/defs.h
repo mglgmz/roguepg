@@ -6,7 +6,7 @@
 #define GAME_TITLE "RoguePG"
 #define TARGET_FPS 60
 
-
+// #define EDITOR_MODE 1
 
 #define CLEAR_COLOR COLOR_3
 
