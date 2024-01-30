@@ -96,62 +96,105 @@ static int gridSizeY = GY;
 
 
 //////////////////////////////////////////////////
-
-/////////////////// UTILS ////////////////////////
-
-static Vector2 gridOrigin = { screenWidth / 2 - TW / 2, screenHeight / 2 - TW / 2};
-static Vector2 CoordsToGrid(Vector2 coords) {
-    return (Vector2) { (coords.x - gridOrigin.x) / TW, (coords.y - gridOrigin.y) / TW };
+int GetMoveDistance(int x, int y, int x2, int y2) {
+    return abs(x - x2) + abs(y - y2);
 }
-
-static Vector2 GridToCoords(Vector2 grid) {
-    return (Vector2) { grid.x * TW + gridOrigin.x , grid.y * TW + gridOrigin.x };
-}
-
-static Vector2 XYToCoords(float x, float y) {
-    return (Vector2) { x * TW + gridOrigin.x , y * TW + gridOrigin.x };
-}
-
-static void DrawDebugGrid(void) {
-    for(int gx = -gridSizeX; gx <= gridSizeX; gx++) {
-        for(int gy = -gridSizeX; gy <= gridSizeX; gy++) { 
-            Vector2 coords = GridToCoords((Vector2){ gx, gy});
-            DrawRectangleLines(coords.x, coords.y, TW, TW, LIGHTGRAY);
-            // const char* text = TextFormat("%d, %d", gx, gy);
-            // DrawText(text, coords.x, coords.y, 8, LIGHTGRAY);
-        }   
-    }
-}
-
-///////////////////////////////////////////////////
-
 ///////////////////////////////////////////////////
 
 /////////////////// DUNGEON ///////////////////////
+static Vector2 gridOrigin = { screenWidth / 2 - TW / 2, screenHeight / 2 - TW / 2};
 
 // V2
 #define DEFAULT_DUNGEON_SIZE 50
 
+#define ROLL_MAX 1000
+
+#define BLOCK_CHANCE 130
+#define ENEMY_CHANCE 25
+#define TRESURE_CHANCE 5
+
+#define ENEMY_ID_START 20
+#define NUM_ENEMIES 10
+
+#define TRESURE_ID 99
+
 Vector2 dungeonOrigin = { 0 };
+int layout[DEFAULT_DUNGEON_SIZE][DEFAULT_DUNGEON_SIZE];
 
-
-Dungeon dungeon = { 0 };
+int enemiesLeft = 0;
+int tresuresLeft = 0;
 
 static void GenerateDungeon(void) {
     dungeonOrigin = (Vector2) { -DEFAULT_DUNGEON_SIZE * TW / 2, -DEFAULT_DUNGEON_SIZE * TW / 2 };
-
     Rectangle initialBounds = (Rectangle){ 0, 0, DEFAULT_DUNGEON_SIZE, DEFAULT_DUNGEON_SIZE };
-
-    
-
+    for(int x = 0; x < DEFAULT_DUNGEON_SIZE; x++) {
+        for(int y = 0; y < DEFAULT_DUNGEON_SIZE; y++) {
+            if((playerDest.x == x && playerDest.y == y)) continue;
+            int roll = GetRandomValue(0, ROLL_MAX);
+            layout[x][y] = 0;
+            if(roll < BLOCK_CHANCE) layout[x][y] = 1;
+            else {
+                roll = GetRandomValue(0, ROLL_MAX);
+                if (roll < ENEMY_CHANCE) { 
+                    layout[x][y] = ENEMY_ID_START + GetRandomValue(0, NUM_ENEMIES);
+                    enemiesLeft++;
+                } else {
+                    roll = GetRandomValue(0, ROLL_MAX);
+                    if (roll < TRESURE_CHANCE) {
+                        layout[x][y] = TRESURE_ID;
+                        tresuresLeft++;
+                    }
+                }
+            } 
+        }
+    }
 }
 
 static void DrawDungeon(void) {
-    
-    
+
+    for(int y = 0; y < DEFAULT_DUNGEON_SIZE; y++) {
+        DrawRectangle(dungeonOrigin.x - TW, dungeonOrigin.y + y * TW, TW, TW, DARKGRAY);
+        DrawRectangle(dungeonOrigin.x + (DEFAULT_DUNGEON_SIZE) * TW, dungeonOrigin.y + y * TW, TW, TW, DARKGRAY);
+        DrawRectangleLines(dungeonOrigin.x - TW, dungeonOrigin.y + y * TW, TW, TW, LIGHTGRAY);
+        DrawRectangleLines(dungeonOrigin.x + (DEFAULT_DUNGEON_SIZE) * TW, dungeonOrigin.y + y * TW, TW, TW, LIGHTGRAY);
+    }
+    for(int x = -1; x <= DEFAULT_DUNGEON_SIZE; x++) {
+        DrawRectangle(dungeonOrigin.x + x * TW, dungeonOrigin.y - TW, TW, TW, DARKGRAY);
+        DrawRectangle(dungeonOrigin.x + x * TW, dungeonOrigin.y + (DEFAULT_DUNGEON_SIZE) * TW, TW, TW, DARKGRAY);
+        DrawRectangleLines(dungeonOrigin.x + x * TW, dungeonOrigin.y - TW, TW, TW, LIGHTGRAY);
+        DrawRectangleLines(dungeonOrigin.x + x * TW, dungeonOrigin.y + (DEFAULT_DUNGEON_SIZE) * TW, TW, TW, LIGHTGRAY);
+    }
+
+    for(int x = 0; x < DEFAULT_DUNGEON_SIZE; x++) {
+        for(int y = 0; y < DEFAULT_DUNGEON_SIZE; y++) {
+            if(layout[x][y] == 1) {
+                DrawRectangle(dungeonOrigin.x + x * TW, dungeonOrigin.y + y * TW, TW, TW, DARKGRAY);
+                DrawRectangleLines(dungeonOrigin.x + x * TW, dungeonOrigin.y + y * TW, TW, TW, LIGHTGRAY);
+            }else if(layout[x][y] >= ENEMY_ID_START && layout[x][y] <= ENEMY_ID_START + NUM_ENEMIES) {
+                DrawRectangle(dungeonOrigin.x + x * TW, dungeonOrigin.y + y * TW, TW, TW, RED);
+            }
+            else if(layout[x][y] == TRESURE_ID) {
+                DrawRectangle(dungeonOrigin.x + x * TW, dungeonOrigin.y + y * TW, TW, TW, GOLD);
+            }
+            else {
+                //DrawRectangle(dungeonOrigin.x + x * TW, dungeonOrigin.y + y * TW, TW, TW, RAYWHITE);
+            }
+
+            //DrawRectangleLines(dungeonOrigin.x + x * TW, dungeonOrigin.y + y * TW, TW, TW, DARKGRAY);
+        }
+    }
 
 }
 
+
+static Vector2 CoordsToPos(int x, int y, int tw) {
+    return (Vector2){ dungeonOrigin.x + x * tw, dungeonOrigin.y + y * tw };
+}
+
+static int CanMove(int x, int y, int xOff, int yOff) {
+    return x + xOff >= 0 && y+yOff >=0 && x + xOff <  DEFAULT_DUNGEON_SIZE && y + yOff < DEFAULT_DUNGEON_SIZE
+        && layout[x+xOff][y+yOff] == 0;
+}
 
 ///////////////////////////////////////////////////
 
@@ -179,31 +222,39 @@ static void UpdateMap(void) {
     }
     
     if(currentTurn == PLAYER_TURN) {
-
+        
         if(IsKeyPressed(KEY_S)){
-            playerDest.y += 1;
-            playerRemaingActions--;
+            if(CanMove(playerDest.x, playerDest.y, 0, 1)) {
+                playerDest.y += 1;
+                playerRemaingActions--;
+            }
         }
         else if(IsKeyPressed(KEY_W)){
-            playerDest.y -= 1;
-            playerRemaingActions--;
+            if(CanMove(playerDest.x, playerDest.y, 0, -1)) {
+                playerDest.y -= 1;
+                playerRemaingActions--;
+            }
         }
         else if(IsKeyPressed(KEY_A)){
-            playerDest.x -= 1;
-            playerRemaingActions--;
+            if(CanMove(playerDest.x, playerDest.y, -1, 0)) { 
+                playerDest.x -= 1;
+                playerRemaingActions--;
+            }
         }
         else if(IsKeyPressed(KEY_D)){
-            playerDest.x += 1;
-            playerRemaingActions--;
+            if(CanMove(playerDest.x, playerDest.y, 1, 0)) {
+                playerDest.x += 1;
+                playerRemaingActions--;
+            }
         }
+        
+        playerPosition = CoordsToPos(playerDest.x, playerDest.y, TW);
+        UpdateGameCamera(playerPosition);
 
     } else {
 
         dungeonRemaingTime -= GetFrameTime();
     }
-
-    // playerPosition = CoordsToPos(playerDest.x, playerDest.y, TW);
-    // UpdateGameCamera(playerPosition);
 
 }
 
@@ -225,7 +276,7 @@ static void RenderMap(void) {
             DrawDungeon();
             
             // DrawDebugGrid();
-            DrawRectangle(playerPosition.x, playerPosition.y, playerDest.width, playerDest.height, COLOR_4);
+            DrawRectangle(playerPosition.x, playerPosition.y, playerDest.width, playerDest.height, GREEN);
             
         EndMode2D();
 
