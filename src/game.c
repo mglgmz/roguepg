@@ -124,7 +124,7 @@ static Vector2 gridOrigin = { screenWidth / 2 - TW / 2, screenHeight / 2 - TW / 
 Vector2 dungeonOrigin = { 0 };
 int layout[DEFAULT_DUNGEON_SIZE][DEFAULT_DUNGEON_SIZE];
 
-#define MAX_ENEMIES 50
+#define MAX_ENEMIES 40
 
 int enemiesLeft = 0;
 int tresuresLeft = 0;
@@ -135,6 +135,7 @@ typedef struct Enemy {
     Vector2 position;
     int detection;
     int actionsPerTurn;
+    int inEncounter;
 } Enemy;
 Enemy enemies[MAX_ENEMIES];
 
@@ -162,6 +163,7 @@ static void GenerateDungeon(void) {
                     };
                     enemy.position = (Vector2) { x, y };
                     enemy.detection = GetRandomValue(5, 15);
+                    enemy.inEncounter = 0;
                     enemies[enemiesLeft] = enemy;
                     enemiesLeft++;
 
@@ -241,34 +243,66 @@ static int CanMove(int x, int y, int xOff, int yOff) {
 
 /////////////////// UPDATE ////////////////////////
 
+int numEncounterEnemies = 0;
+int encounterEnemies[10];
+
+static void DetectEncounters(void) {
+    for(int i=0; i< MAX_ENEMIES; i++) {
+        Enemy* enemy = &enemies[i];
+        if(enemy->inEncounter) continue;
+        if(enemy->position.x == playerDest.x && enemy->position.y == playerDest.y) {
+            encounterEnemies[numEncounterEnemies] = i;
+            numEncounterEnemies++;
+            enemy->inEncounter = 1;
+        }
+    }
+
+    if(numEncounterEnemies > 0)
+        currentState = COMBAT_STATE;
+}
+
 static void PlayerTurn (void) {
     currentTurn = PLAYER_TURN;
     playerRemaingActions = maxPlayerActions;
+}
+
+static void MoveEnemies(void) {
+    for(int i=0; i< MAX_ENEMIES; i++) {
+        Enemy* enemy = &enemies[i];
+        
+        // TODO check if enemy detected player
+        int distanceToPlayer = GetMoveDistance(enemy->position.x , enemy->position.y, playerDest.x, playerDest.y);
+        if(distanceToPlayer > enemy->detection) continue;
+
+        int actionsTaken = 0;
+
+        while(actionsTaken < enemy->actionsPerTurn) {
+            
+            int dx = playerDest.x < enemy->position.x ? -1 :
+                    playerDest.x > enemy->position.x ? 1 : 0;
+            // TODO Account for number of actions
+
+            if(dx != 0 && CanMove(enemy->position.x, enemy->position.y, dx, 0)) {
+                enemy->position = (Vector2) { enemy->position.x + dx, enemy->position.y };
+            } else {
+                int dy = playerDest.y < enemy->position.y ? -1 :
+                    playerDest.y > enemy->position.y ? 1 : 0;
+                if(dy != 0 && CanMove(enemy->position.x, enemy->position.y, 0, dy)) {
+                    enemy->position = (Vector2) { enemy->position.x, enemy->position.y + dy };
+                }
+            }
+            actionsTaken++;
+        }
+    }
 }
 
 static void DungeonTurn(void) {
     currentTurn = DUNGEON_TURN;
     dungeonRemaingTime = maxDungeonTime;
     //TODO change time and just change turn when dungeon has no remaing actions
+    MoveEnemies();
 
-    for(int i=0; i< MAX_ENEMIES; i++) {
-        Enemy* enemy = &enemies[i];
-        
-        // TODO check if enemy detected player
-
-        int dx = playerDest.x < enemy->position.x ? -1 :
-                playerDest.x > enemy->position.x ? 1 : 0;
-        // TODO Account for number of actions
-
-        if(CanMove(enemy->position.x, enemy->position.y, dx, 0)) {
-            enemy->position = (Vector2) { enemy->position.x + dx, enemy->position.y };
-        } else {
-            int dy = playerDest.y < enemy->position.y ? -1 :
-                playerDest.y > enemy->position.y ? 1 : 0;
-            if(CanMove(enemy->position.x, enemy->position.y, dx, 0))
-                enemy->position = (Vector2) { enemy->position.x, enemy->position.y + dy };
-        }
-    }
+    DetectEncounters();
 }
 
 static void UpdateMap(void) {
@@ -328,41 +362,49 @@ static void UpdateCombat(void) {
 //////////////////// RENDER ///////////////////////
 
 static void RenderMap(void) {
-    // Draw
+
+    BeginMode2D(*GetGameCamera());
+        DrawDungeon();
+        
+        // DrawDebugGrid();
+        DrawRectangle(playerPosition.x, playerPosition.y, playerDest.width, playerDest.height, GREEN);
+        
+    EndMode2D();
+
+    DrawText(TextFormat("Enemies Left: %i", enemiesLeft), 5, gameHeight - 45, 10, COLOR_3);
+    DrawText(TextFormat("CurrentState: %s", currentState == MAP_STATE ? "Map" : "Combat"), 5, gameHeight - 30, 10, COLOR_3);
+    DrawText(TextFormat("CurrentTurn: %s", currentTurn == PLAYER_TURN ? "Player" : "Dungeon"), 5, gameHeight - 15, 10, COLOR_3);
+    // DrawText(TextFormat("TotalRooms: %i", totalRooms), 5, gameHeight - 30, 10, COLOR_3);
+
+}
+
+int combatMargin = 15;
+static void RenderCombat(void) {
+    DrawRectangle(0 + combatMargin, 0 + combatMargin, screenWidth - 2 * combatMargin, screenHeight - 2 * combatMargin, Fade(BLACK, 0.75f));
+}
+
+static void RenderGame(void) {
     BeginDrawing();
         ClearBackground(RAYWHITE);
-
-        BeginMode2D(*GetGameCamera());
-            DrawDungeon();
-            
-            // DrawDebugGrid();
-            DrawRectangle(playerPosition.x, playerPosition.y, playerDest.width, playerDest.height, GREEN);
-            
-        EndMode2D();
-
-        DrawText(TextFormat("Enemies Left: %i", enemiesLeft), 5, gameHeight - 30, 10, COLOR_3);
-        DrawText(TextFormat("CurrentTurn: %s", currentTurn == PLAYER_TURN ? "Player" : "Dungeon"), 5, gameHeight - 15, 10, COLOR_3);
-        // DrawText(TextFormat("TotalRooms: %i", totalRooms), 5, gameHeight - 30, 10, COLOR_3);
-
+        RenderMap();
+        if (currentState == COMBAT_STATE)
+            RenderCombat();
     EndDrawing();
 }
-
-static void RenderCombat(void) {
-
-}
-
+ 
 ///////////////////////////////////////////////////
 
 static void UpdateDrawFrame(void) {
 #if !defined(EDITOR_MODE)
     if(currentState == MAP_STATE)  {
         UpdateMap();
-        RenderMap();
     }
     else if (currentState == COMBAT_STATE)  {
         UpdateCombat();
-        RenderCombat();
     }
+    
+    RenderGame();
+
 #else
     UpdateEditor();
     RenderEditor();
