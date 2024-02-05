@@ -59,9 +59,7 @@ int main(void) {
 #define TW 24
 #define GX 50
 #define GY 50
-
-// TODO: multiplayer!!!s
-
+/////////////////// PLAYER ////////////////////////
 Rectangle playerDest = {
     .x = 1,
     .y = 1,
@@ -70,11 +68,41 @@ Rectangle playerDest = {
 };
 Vector2 playerPosition;
 
-static int maxPlayerActions = 1;
-static int playerRemaingActions = 1;
 
-int playerInRoom = 0;
+#define DEFAULT_PLAYER_ACTIONS 1
+static int maxPlayerActions = DEFAULT_PLAYER_ACTIONS;
+static int playerRemaingActions = DEFAULT_PLAYER_ACTIONS;
 
+int maxHp = 10;
+int hp = 10;
+
+int atk = 1;
+int power = 1;
+int mAtk = 1;
+int mPower = 1;
+
+int crit = 1;
+float critPower = 1.2f; 
+
+int defense = 1;
+int mDefense = 1;
+
+#define NUM_DAMAGE_TYPES 7
+typedef enum DamageTypes {
+    TRUE = 1,
+    PHYSICAL = 2,
+    FIRE = 4,
+    ICE = 8,
+    LIGHTNING = 16,
+    EARTH = 32,
+    DARK = 64,
+    MAGIC = 128
+} DamageTypes;
+
+// True cannot be resisted
+int resistances[7] = { 0, 0, 0, 0, 0, 0, 0 };
+
+///////////////////////////////////////////////////
 typedef enum GameState {
     MAP_STATE = 1,
     COMBAT_STATE
@@ -101,6 +129,7 @@ int GetMoveDistance(int x, int y, int x2, int y2) {
 }
 ///////////////////////////////////////////////////
 
+
 /////////////////// DUNGEON ///////////////////////
 static Vector2 gridOrigin = { screenWidth / 2 - TW / 2, screenHeight / 2 - TW / 2};
 
@@ -125,9 +154,23 @@ Vector2 dungeonOrigin = { 0 };
 int layout[DEFAULT_DUNGEON_SIZE][DEFAULT_DUNGEON_SIZE];
 
 #define MAX_ENEMIES 40
+#define MAX_TREASURES 20
+
+int numTreasures = 0;
 
 int enemiesLeft = 0;
 int tresuresLeft = 0;
+
+typedef struct Treasure {
+    Vector2 position;
+    int claimed;
+    int numItems;
+    int items[5];
+    int gp;
+    int rarity;
+} Treasure;
+
+Treasure treasure[MAX_TREASURES];
 
 // Enemies
 typedef struct Enemy {
@@ -257,8 +300,10 @@ static void DetectEncounters(void) {
         }
     }
 
-    if(numEncounterEnemies > 0)
+    if(numEncounterEnemies > 0) {
         currentState = COMBAT_STATE;
+        currentTurn = PLAYER_TURN;
+    }
 }
 
 static void PlayerTurn (void) {
@@ -354,6 +399,10 @@ static void UpdateMap(void) {
 
 static void UpdateCombat(void) {
     
+    if(numEncounterEnemies == 0) {
+        currentState = MAP_STATE;
+        PlayerTurn();
+    }
 }
 
 ///////////////////////////////////////////////////
