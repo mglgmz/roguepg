@@ -76,16 +76,15 @@ static int playerRemaingActions = DEFAULT_PLAYER_ACTIONS;
 int maxHp = 10;
 int hp = 10;
 
-int atk = 1;
+
+
 int power = 1;
-int mAtk = 1;
 int mPower = 1;
 
 int crit = 1;
 float critPower = 1.2f; 
 
-int defense = 1;
-int mDefense = 1;
+float dodge = 0.0f;
 
 #define NUM_DAMAGE_TYPES 7
 typedef enum DamageTypes {
@@ -100,7 +99,8 @@ typedef enum DamageTypes {
 } DamageTypes;
 
 // True cannot be resisted
-int resistances[7] = { 0, 0, 0, 0, 0, 0, 0 };
+int shields[NUM_DAMAGE_TYPES] = { 0, 0, 0, 0, 0, 0, 0 };
+int resistances[NUM_DAMAGE_TYPES] = { 0, 0, 0, 0, 0, 0, 0 };
 
 ///////////////////////////////////////////////////
 typedef enum GameState {
@@ -314,10 +314,10 @@ static void PlayerTurn (void) {
 static void MoveEnemies(void) {
     for(int i=0; i< MAX_ENEMIES; i++) {
         Enemy* enemy = &enemies[i];
-        
+        if(enemy->inEncounter) continue;
         // TODO check if enemy detected player
         int distanceToPlayer = GetMoveDistance(enemy->position.x , enemy->position.y, playerDest.x, playerDest.y);
-        if(distanceToPlayer > enemy->detection) continue;
+        if(distanceToPlayer > enemy->detection || distanceToPlayer == 0) continue;
 
         int actionsTaken = 0;
 
@@ -428,8 +428,20 @@ static void RenderMap(void) {
 }
 
 int combatMargin = 15;
+const int enemyWidth = 80;
 static void RenderCombat(void) {
     DrawRectangle(0 + combatMargin, 0 + combatMargin, screenWidth - 2 * combatMargin, screenHeight - 2 * combatMargin, Fade(BLACK, 0.75f));
+numEncounterEnemies = 2;
+    // enemies
+    int offset = (gameWidth - combatMargin * 4) / (numEncounterEnemies + 1);
+    int currentPosition = offset;
+    for(int i = 0; i < numEncounterEnemies; i++) {
+        DrawRectangle(currentPosition, 150, enemyWidth, enemyWidth, RED);
+        //Enemy* enemy = &enemies[encounterEnemies[i]];
+        currentPosition += offset;
+    }
+
+
 }
 
 static void RenderGame(void) {
